@@ -1,0 +1,23 @@
+{
+  "name": "superhero-generator-backend",
+  "version": "1.0.0",
+  "description": "Backend for Superhero Generator - iFAgent Intern Challenge",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@fal-ai/client": "^1.10.1",
+    "@google/genai": "^1.0.0",
+    "@huggingface/inference": "^4.13.25",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
