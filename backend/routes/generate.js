@@ -209,7 +209,7 @@ router.post('/', async (req, res) => {
   }
 
   const latency = Date.now() - startTime;
-  addLog({ prompt: result.prompt, httpStatus: 200, latency, error: null, config: { model: GEMINI_IMAGE_MODEL, provider: result.provider } });
+  addLog({ prompt: result.prompt, httpStatus: 200, latency, error: null, config: { model: GEMINI_PRO_MODEL, provider: result.provider } });
   console.log(`[GENERATE] ✅ Done via "${result.provider}" in ${latency}ms\n`);
 
   return res.json({
