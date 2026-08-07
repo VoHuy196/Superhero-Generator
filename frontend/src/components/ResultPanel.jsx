@@ -132,13 +132,13 @@ function ResultPanel({ result, loading, userName }) {
             </Text>
             <div className="flex flex-col gap-1 mt-2">
               <Text type="secondary" className="text-xs">
-                🍌 Gemini 2.5 Flash Image ("Nano Banana") đang xử lý...
+                🍌 Nano Banana Pro (Gemini 3 Pro Image) đang xử lý...
               </Text>
               <Text type="secondary" className="text-xs">
-                🎨 Giữ nguyên khuôn mặt & biến đổi thành Superhero...
+                🎨 Giữ nguyên khuôn mặt &amp; biến đổi thành Superhero...
               </Text>
               <Text style={{ color: '#4b5563', fontSize: 11 }}>
-                (Có thể mất 15–45 giây)
+                (Có thể mất 10–30 giây)
               </Text>
             </div>
           </div>

@@ -1,134 +1,167 @@
-# 🦸 Superhero Generator
+# 🦸 Superhero Generator — Nano Banana Pro AI
 
-> **iFAgent Technical Challenge – Intern Developer**  
-> Biến ảnh của bạn thành siêu anh hùng với Google Gemini AI
+> **A Full-Stack AI Web Application** that transforms any person's photo into an epic Marvel-style Superhero while preserving **100% of their exact facial features**. 
+> Powered by **Google Gemini 3 Pro Image ("Nano Banana Pro")**, **React 18**, **Ant Design 5**, **TailwindCSS**, and **Express.js**.
 
-![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?logo=react) ![Ant Design](https://img.shields.io/badge/Ant%20Design-5-0170FE?logo=antdesign) ![TailwindCSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss) ![Gemini](https://img.shields.io/badge/Google%20Gemini-AI-8E75B2?logo=google)
+![Superhero Generator Banner](https://img.shields.io/badge/AI-Nano%20Banana%20Pro-purple?style=for-the-badge&logo=google)
+![Stack](https://img.shields.io/badge/Stack-React%20%7C%20Express%20%7C%20Ant%20Design-blue?style=for-the-badge)
+![Deploy](https://img.shields.io/badge/Deploy-Vercel%20Ready-black?style=for-the-badge&logo=vercel)
 
 ---
 
-## ✨ Tính năng
+## ✨ Features
 
-| Thành phần | Mô tả |
-|---|---|
-| **A – Input** | Nhập tên + Upload ảnh hoặc chụp trực tiếp từ Camera |
-| **B – AI Generation** | Gọi Google Gemini API để biến đổi khuôn mặt thành siêu anh hùng |
-| **C – Watermark** | Tên người dùng được render đè lên ảnh bằng Canvas HTML5 |
-| **D – Log Viewer** | Real-time logs: timestamp, prompt, HTTP status, latency, errors |
+- 🎭 **Face Preservation**: Keeps facial expressions, eye color, jawline, and skin tone 100% identical to the reference photo.
+- ⚡ **Nano Banana Pro Model**: Uses Google's latest **Gemini 3 Pro Image (`gemini-3-pro-image`)** for ultra-detailed 8K Marvel concept art generation.
+- 🔄 **3-Tier Cascade Fallback**:
+  1. `gemini-3-pro-image` (Nano Banana Pro - Primary)
+  2. `gemini-2.5-flash-image` (Nano Banana Flash - Secondary)
+  3. `Pollinations.ai FLUX` (Emergency Fallback)
+- 📸 **Camera & File Upload**: Upload local images or take a live photo directly from your WebCam.
+- 🎨 **Canvas Watermark Overlay**: Renders dynamic user name badges onto the final generated artwork using HTML5 Canvas.
+- 📊 **Real-time Log Viewer**: Monitored HTTP latency, status code, prompts, and active model providers in a live-updating table.
+- 📱 **Cyberpunk / Dark UI**: Crafted with Ant Design 5 & TailwindCSS glassmorphism.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 18** + **Vite**
-- **Ant Design 5** – UI Components
-- **TailwindCSS 3** – Utility styling
-- **Canvas API** – Image watermark overlay
+- **Framework**: React 18 + Vite
+- **UI Library**: Ant Design 5 (Dark Theme, App context)
+- **Styling**: TailwindCSS 3 (Glassmorphism & Neon Glow effects)
+- **Canvas API**: HTML5 Native Canvas for image watermarking
+- **Camera**: HTML5 MediaDevices API (`navigator.mediaDevices.getUserMedia`)
 
 ### Backend
-- **Node.js** + **Express**
-- **@google/genai** – Google Gemini SDK
-- **dotenv**, **cors**
+- **Runtime**: Node.js
+- **API Framework**: Express.js
+- **AI SDK**: `@google/genai` (Google Gen AI SDK v1.0)
+- **Image Processing**: Base64 & Multipart Uploader
+- **Architecture**: REST API + In-Memory Circular Buffer Logger
 
 ---
 
-## 🚀 Chạy dự án local
+## 🚀 Quick Start Guide (Run Locally)
 
-### Yêu cầu
-- Node.js >= 18
-- Gemini API Key từ [Google AI Studio](https://aistudio.google.com/app/apikey)
+Follow these simple steps to run the project on your local machine:
 
-### 1. Backend
+### 1. Prerequisites
+Make sure you have **Node.js (v18 or higher)** and **npm** installed on your system.
 
+```bash
+node -v
+npm -v
+```
+
+### 2. Clone the Repository
+```bash
+git clone https://github.com/VoHuy196/Superhero-Generator.git
+cd Superhero-Generator
+```
+
+### 3. Install Dependencies
+
+#### Install Backend Dependencies
 ```bash
 cd backend
 npm install
-# Kiểm tra file .env có GEMINI_API_KEY
-node index.js
-# Server chạy tại http://localhost:5000
 ```
 
-### 2. Frontend
+#### Install Frontend Dependencies
+```bash
+cd ../frontend
+npm install
+```
+
+---
+
+### 4. Environment Configuration (`.env`)
+
+Create a `.env` file inside the `backend/` directory:
 
 ```bash
-cd frontend
-npm install
-npm run dev
-# App chạy tại http://localhost:5173
-```
-
-### 3. Mở trình duyệt
-
-Truy cập: **http://localhost:5173**
-
----
-
-## 📁 Cấu trúc thư mục
-
-```
-IfAgentTest/
-├── backend/
-│   ├── index.js              # Express server (port 5000)
-│   ├── routes/
-│   │   ├── generate.js       # POST /api/generate → Gemini API
-│   │   └── logs.js           # GET/DELETE /api/logs
-│   ├── utils/
-│   │   └── logger.js         # In-memory log store
-│   └── .env                  # GEMINI_API_KEY
-│
-└── frontend/
-    ├── src/
-    │   ├── App.jsx                       # Layout chính
-    │   ├── main.jsx                      # Entry + Ant Design theme
-    │   ├── index.css                     # Global styles + Tailwind
-    │   └── components/
-    │       ├── InputPanel.jsx            # Form nhập tên + ảnh
-    │       ├── CameraCapture.jsx         # Modal camera live
-    │       ├── ResultPanel.jsx           # Hiển thị ảnh + Canvas watermark
-    │       └── LogViewer.jsx             # Bảng log real-time
-    └── vite.config.js
-```
-
----
-
-## 🔑 Cấu hình API Key
-
-File `backend/.env`:
-```env
-GEMINI_API_KEY=your_api_key_here
+# Path: backend/.env
 PORT=5000
+
+# Google Gemini API Key (Get free key at: https://aistudio.google.com/app/apikey)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# (Optional) Pollinations API Key
+POLLINATIONS_API_KEY=sk_kjRaZacOX9AgPJ86FJjXBS4bxn7Cz2kc
 ```
 
-Lấy API key miễn phí tại: https://aistudio.google.com/app/apikey
+> 💡 **Tip**: Get a free Gemini API Key at [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ---
 
-## 📊 API Endpoints
+### 5. Run the Application
 
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `POST` | `/api/generate` | Generate superhero image |
-| `GET` | `/api/logs` | Lấy tất cả logs |
-| `DELETE` | `/api/logs` | Xóa logs |
-
-### POST /api/generate
-**Request body:**
-```json
-{
-  "imageBase64": "base64_string",
-  "mimeType": "image/jpeg",
-  "name": "Tên người dùng"
-}
+#### Step A: Start Backend Server
+```bash
+cd backend
+npm start
+# Server runs on: http://localhost:5000
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "imageBase64": "base64_string",
-  "mimeType": "image/png",
-  "latency": 12345
-}
+#### Step B: Start Frontend Development Server (Open a new terminal)
+```bash
+cd frontend
+npm run dev
+# Frontend runs on: http://localhost:5173
 ```
+
+🎉 Open your browser and navigate to **[http://localhost:5173](http://localhost:5173)** to start creating your superheroes!
+
+---
+
+## ☁️ Deploy to Vercel (One-Click / Manual)
+
+This project is fully configured for Vercel deployment via `vercel.json` (Serverless Functions for Express API + Static build for Vite React).
+
+1. Push your code to GitHub (already done!).
+2. Log in to [Vercel Dashboard](https://vercel.com/dashboard) ➔ Click **Add New Project**.
+3. Import the repository **`VoHuy196/Superhero-Generator`**.
+4. Add **Environment Variable**:
+   - `GEMINI_API_KEY` = `your_gemini_api_key`
+5. Click **Deploy**. Vercel will handle building both frontend and backend automatically!
+
+---
+
+## 📁 Repository Structure
+
+```text
+Superhero-Generator/
+├── backend/
+│   ├── routes/
+│   │   ├── generate.js     # Nano Banana Pro AI image generation route
+│   │   └── logs.js         # Real-time log monitoring route
+│   ├── utils/
+│   │   ├── logger.js       # In-memory circular buffer logger
+│   │   └── uploader.js     # Temp public image host uploader
+│   ├── index.js            # Express application entrypoint
+│   ├── package.json
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── InputPanel.jsx     # Photo upload & form panel
+│   │   │   ├── CameraCapture.jsx  # WebCam live capture modal
+│   │   │   ├── ResultPanel.jsx   # Result display & Canvas watermark
+│   │   │   └── LogViewer.jsx     # Real-time API log table
+│   │   ├── App.jsx                # Main layout component
+│   │   └── main.jsx               # React entry point
+│   ├── index.html
+│   ├── tailwind.config.js
+│   └── package.json
+├── vercel.json                    # Vercel deployment configuration
+└── README.md                      # Project documentation
+```
+
+---
+
+## 📝 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+Developed for **iFAgent Intern Challenge** by **VoHuy196**.
