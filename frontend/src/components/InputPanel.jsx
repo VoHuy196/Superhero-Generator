@@ -179,34 +179,31 @@ function InputPanel({ onResult, onLoading }) {
             {imagePreview ? (
               /* Image preview state */
               <div className="relative">
-                <div
-                  className="relative rounded-xl overflow-hidden"
-                  style={{
-                    border: '2px solid rgba(124,58,237,0.4)',
-                    boxShadow: '0 0 20px rgba(124,58,237,0.2)',
-                  }}
-                >
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full object-cover"
-                    style={{ maxHeight: 220, display: 'block' }}
-                  />
-                  {/* Gradient overlay */}
                   <div
-                    className="absolute inset-0"
-                    style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,15,26,0.7))' }}
-                  />
-                  {/* Success badge */}
-                  <div className="absolute top-2 left-2">
-                    <span
-                      className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
-                      style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid #10b981', color: '#10b981' }}
-                    >
-                      <CheckCircleOutlined /> Ảnh đã chọn
-                    </span>
+                    className="relative rounded-xl overflow-hidden flex items-center justify-center p-2"
+                    style={{
+                      background: '#0a0a16',
+                      border: '2px solid rgba(124,58,237,0.4)',
+                      boxShadow: '0 0 20px rgba(124,58,237,0.2)',
+                      minHeight: 200,
+                      maxHeight: 360,
+                    }}
+                  >
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-w-full max-h-[340px] w-auto h-auto object-contain rounded-lg"
+                    />
+                    {/* Success badge */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <span
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md"
+                        style={{ background: 'rgba(16,185,129,0.25)', border: '1px solid #10b981', color: '#10b981' }}
+                      >
+                        <CheckCircleOutlined /> Ảnh đã chọn
+                      </span>
+                    </div>
                   </div>
-                </div>
                 <Button
                   icon={<CloseCircleOutlined />}
                   onClick={clearImage}
