@@ -45,6 +45,7 @@ async function generateWithGeminiNanoBanana(imageBase64, mimeType, name) {
   console.log(`[GEMINI NANO BANANA] Calling gemini-2.5-flash-image model for "${name}"...`);
   const prompt = buildNanoBananaPrompt(name);
 
+  // Standard Multimodal Request: Both inlineData (image) and text (prompt) are in the SAME parts array
   const response = await ai.models.generateContent({
     model: GEMINI_IMAGE_MODEL,
     contents: [
@@ -57,7 +58,9 @@ async function generateWithGeminiNanoBanana(imageBase64, mimeType, name) {
               data: imageBase64,
             },
           },
-          { text: prompt },
+          {
+            text: prompt,
+          },
         ],
       },
     ],
