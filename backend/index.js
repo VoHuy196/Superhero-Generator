@@ -21,9 +21,9 @@ const PORT = process.env.PORT || 5000;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
-// CORS: allow Vite dev server (port 5173) and any other origin
+// CORS: allow Vite dev server, vercel deployments, and all origins
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: '*',
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -57,10 +57,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-// ─── Start Server ─────────────────────────────────────────────────────────────
+// ─── Start Server / Export for Vercel ─────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`\n🦸 Superhero Generator API running on http://localhost:${PORT}`);
-  console.log(`   Health: http://localhost:${PORT}/api/health`);
-  console.log(`   Gemini Key: ${process.env.GEMINI_API_KEY ? '✅ Loaded' : '❌ MISSING'}\n`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n🦸 Superhero Generator API running on http://localhost:${PORT}`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+    console.log(`   Gemini Key: ${process.env.GEMINI_API_KEY ? '✅ Loaded' : '❌ MISSING'}\n`);
+  });
+}
+
+module.exports = app;
