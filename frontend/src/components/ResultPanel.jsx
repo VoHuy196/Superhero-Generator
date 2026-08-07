@@ -132,13 +132,13 @@ function ResultPanel({ result, loading, userName }) {
             </Text>
             <div className="flex flex-col gap-1 mt-2">
               <Text type="secondary" className="text-xs">
-                🦸 FLUX Kontext img2img – giữ nguyên khuôn mặt...
+                🍌 Gemini 2.5 Flash Image ("Nano Banana") đang xử lý...
               </Text>
               <Text type="secondary" className="text-xs">
-                ⚡ Đang xử lý ảnh, vui lòng chờ...
+                🎨 Giữ nguyên khuôn mặt & biến đổi thành Superhero...
               </Text>
               <Text style={{ color: '#4b5563', fontSize: 11 }}>
-                (Có thể mất 20–60 giây)
+                (Có thể mất 15–45 giây)
               </Text>
             </div>
           </div>

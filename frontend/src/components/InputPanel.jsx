@@ -283,7 +283,7 @@ function InputPanel({ onResult, onLoading }) {
           {/* Hint text */}
           <div className="mt-3 text-center">
             <Text style={{ color: '#4b5563', fontSize: 12 }}>
-              🤖 Powered by Google Gemini AI · Giữ nguyên đặc điểm khuôn mặt của bạn
+              🤖 Powered by Gemini 2.5 Flash Image (&quot;Nano Banana&quot;) · Giữ nguyên khuôn mặt
             </Text>
           </div>
         </Form>
