@@ -1,11 +1,11 @@
 /**
- * Generate route - Face-Preserving Superhero Generation
+ * Generate route - Two-Stage Superhero Generation
  *
- * Strategy:
- *   1. Try fal.ai FLUX Kontext (best quality if balance available)
- *   2. Upload image to temporary host (tmpfiles.org) to obtain a clean public URL
- *   3. Call Pollinations.ai img2img with the short public URL (bypassing 414 Header Too Large)
- *   4. Fallback to Pollinations.ai text2img if needed
+ * Stage 1: Google Gemini Vision AI reads and understands the user's photo,
+ *          analyzing face & physical features, and generates an optimized superhero prompt.
+ *
+ * Stage 2: Pollinations AI (with API key) receives the Gemini-crafted prompt
+ *          and generates the high-quality superhero image.
  *
  * POST /api/generate
  * Body: { imageBase64: string, mimeType: string, name: string }
@@ -15,173 +15,144 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const http = require('http');
-const { fal } = require('@fal-ai/client');
+const { GoogleGenAI } = require('@google/genai');
 const { addLog } = require('../utils/logger');
 const { uploadToTmpFiles } = require('../utils/uploader');
 
-// Configure fal.ai client if key exists
-fal.config({ credentials: process.env.FAL_KEY || '' });
+// Initialize Gemini SDK with API Key
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const GEMINI_VISION_MODEL = 'gemini-2.0-flash';
 
+// Pollinations API endpoint & key
 const POLLINATIONS_BASE = 'https://image.pollinations.ai/prompt';
+const POLLINATIONS_KEY = process.env.POLLINATIONS_API_KEY || 'sk_kjRaZacOX9AgPJ86FJjXBS4bxn7Cz2kc';
 
 /**
- * Build superhero transformation prompt for img2img
+ * Stage 1: Use Gemini Vision AI to analyze the user photo and build a detailed superhero prompt
  */
-function buildSuperheroPrompt(name) {
-  return `Marvel superhero transformation of the person in the reference image. ` +
-    `CRITICAL REQUIREMENT: Preserve the exact same face, facial features, facial structure, skin tone, and eyes from the reference photo. ` +
-    `Add an epic superhero suit for "${name}" with glowing power aura, metallic armor plating, dynamic cape. ` +
-    `Cinematic lighting, high detail Marvel movie poster style, 8k resolution, heroic stance, cityscape background.`;
-}
+async function generatePromptWithGeminiVision(imageBase64, mimeType, name) {
+  console.log(`[GEMINI VISION] Analyzing photo for "${name}"...`);
 
-const NEGATIVE_PROMPT =
-  'different face, changed facial features, wrong face, altered facial structure, ' +
-  'blurry, low quality, bad anatomy, extra limbs, deformed, watermark, bad skin';
+  const visionSystemPrompt = `You are an expert AI prompt engineer for image generation models (FLUX / Stable Diffusion).
+Look closely at this person's photo and analyze their physical appearance and facial features in detail.
 
-// ─── Provider 1: fal.ai FLUX Kontext ──────────────────────────────────────────
+Your task: Create a comprehensive, vivid AI image generation prompt that transforms this exact person into an epic Marvel-style Superhero named "${name}".
 
-async function generateWithFalKontext(imageBase64, mimeType, name) {
-  console.log(`[GENERATE] Provider: fal.ai FLUX Kontext`);
+Requirements for your output prompt:
+1. Describe the person's facial features accurately (face shape, skin tone, eye color & shape, eyebrows, hair color & style, jawline, expression, age group) so their identity and likeness are preserved.
+2. Design an incredible Marvel-style superhero costume for "${name}" featuring metallic armor plating, vibrant superhero suit, flowing cape, and glowing energy/power aura (lightning or cosmic energy).
+3. Specify cinematic lighting, heroic posture, dynamic composition, dramatic city skyline background at dusk/night, 8k resolution, photorealistic concept art.
+4. Output ONLY the raw image generation prompt in English. Do NOT add any preamble, markdown code blocks, titles, or quotes.`;
 
-  const imageBuffer = Buffer.from(imageBase64, 'base64');
-  const imageBlob = new Blob([imageBuffer], { type: mimeType || 'image/jpeg' });
-  const imageFile = new File([imageBlob], 'input.jpg', { type: mimeType || 'image/jpeg' });
-
-  const imageUrl = await fal.storage.upload(imageFile);
-  console.log(`[GENERATE] Uploaded to fal storage: ${imageUrl}`);
-
-  const prompt = buildSuperheroPrompt(name);
-  const result = await fal.subscribe('fal-ai/flux-pro/v1/kontext', {
-    input: {
-      prompt,
-      image_url: imageUrl,
-      guidance_scale: 3.5,
-      num_inference_steps: 28,
-      output_format: 'jpeg',
-    },
-    logs: false,
+  const response = await ai.models.generateContent({
+    model: GEMINI_VISION_MODEL,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType || 'image/jpeg',
+              data: imageBase64,
+            },
+          },
+          { text: visionSystemPrompt },
+        ],
+      },
+    ],
   });
 
-  const outputUrl = result?.data?.images?.[0]?.url;
-  if (!outputUrl) throw new Error('No output image URL returned by fal.ai');
+  const generatedPrompt = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  if (!generatedPrompt) {
+    throw new Error('Gemini Vision returned an empty prompt response.');
+  }
 
-  const base64 = await downloadAsBase64(outputUrl);
-  return {
-    base64,
-    mimeType: 'image/jpeg',
-    provider: 'fal.ai FLUX Kontext (img2img – face preserving)',
-  };
+  console.log(`[GEMINI VISION] Generated Prompt successfully (${generatedPrompt.length} chars):`);
+  console.log(`"${generatedPrompt}"`);
+  return generatedPrompt;
 }
 
-// ─── Provider 2: Pollinations img2img with hosted URL ────────────────────────
-
-async function generateWithPollinationsImg2Img(publicImageUrl, name) {
+/**
+ * Stage 2: Call Pollinations AI to generate the superhero image using the prompt from Gemini
+ */
+async function generateImageWithPollinations(prompt, publicImageUrl = null) {
   return new Promise((resolve, reject) => {
-    console.log(`[GENERATE] Provider: Pollinations.ai img2img (ref: ${publicImageUrl})`);
-    const prompt = buildSuperheroPrompt(name);
+    console.log(`[POLLINATIONS AI] Sending request to Pollinations API...`);
     const seed = Math.floor(Math.random() * 999999);
 
     const params = new URLSearchParams({
-      imageUrl: publicImageUrl, // short public URL from tmpfiles.org
       width: '1024',
       height: '1024',
       model: 'flux',
       seed: String(seed),
       nologo: 'true',
       enhance: 'true',
-      negative_prompt: NEGATIVE_PROMPT,
     });
 
+    // If we have a hosted image URL, pass it as reference to assist img2img face alignment
+    if (publicImageUrl) {
+      params.append('imageUrl', publicImageUrl);
+    }
+
     const url = `${POLLINATIONS_BASE}/${encodeURIComponent(prompt)}?${params.toString()}`;
-    console.log(`[GENERATE] Requesting Pollinations img2img URL...`);
+    console.log(`[POLLINATIONS AI] Endpoint: ${url.substring(0, 100)}...`);
 
     const doGet = (targetUrl) => {
       const proto = targetUrl.startsWith('https') ? https : http;
-      const req = proto.get(targetUrl, { timeout: 120000 }, (res) => {
+      const headers = {
+        'User-Agent': 'SuperheroGenerator/1.0',
+      };
+      if (POLLINATIONS_KEY) {
+        headers['Authorization'] = `Bearer ${POLLINATIONS_KEY}`;
+        headers['x-api-key'] = POLLINATIONS_KEY;
+      }
+
+      const req = proto.get(targetUrl, { headers, timeout: 120000 }, (res) => {
         if ([301, 302].includes(res.statusCode) && res.headers.location) {
           return doGet(res.headers.location);
         }
         if (res.statusCode !== 200) {
-          return reject(new Error(`Pollinations HTTP ${res.statusCode}`));
+          return reject(new Error(`Pollinations API HTTP ${res.statusCode}`));
         }
         const chunks = [];
-        res.on('data', c => chunks.push(c));
+        res.on('data', chunk => chunks.push(chunk));
         res.on('end', () => {
-          const buf = Buffer.concat(chunks);
-          if (buf.length < 5000) {
-            return reject(new Error(`Image response too small (${buf.length}B) - likely an error page`));
+          const buffer = Buffer.concat(chunks);
+          if (buffer.length < 5000) {
+            return reject(new Error(`Pollinations returned invalid image buffer (${buffer.length} bytes)`));
           }
-          console.log(`[GENERATE] Pollinations img2img received: ${buf.length} bytes`);
-          resolve({
-            base64: buf.toString('base64'),
-            mimeType: (res.headers['content-type'] || 'image/jpeg').split(';')[0],
-            provider: 'Pollinations.ai FLUX img2img (face reference)',
-          });
+          console.log(`[POLLINATIONS AI] Received image (${buffer.length} bytes)`);
+          const base64 = buffer.toString('base64');
+          const contentType = (res.headers['content-type'] || 'image/jpeg').split(';')[0];
+          resolve({ base64, mimeType: contentType });
         });
         res.on('error', reject);
       });
+
       req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Pollinations timeout after 120s')); });
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Pollinations API request timed out after 120 seconds'));
+      });
     };
+
     doGet(url);
   });
 }
 
-// ─── Provider 3: Pollinations text2img (Fallback) ────────────────────────────
-
-function generateWithPollinationsText(name) {
-  return new Promise((resolve, reject) => {
-    console.log(`[GENERATE] Provider: Pollinations.ai text2img (fallback)`);
-    const prompt = `Epic Marvel superhero portrait for "${name}", superhero costume with glowing energy, cape, metallic armor, cinematic lighting, 8k resolution.`;
-    const seed = Math.floor(Math.random() * 999999);
-    const params = new URLSearchParams({
-      width: '1024',
-      height: '1024',
-      model: 'flux',
-      seed: String(seed),
-      nologo: 'true',
-      enhance: 'true',
-    });
-    const url = `${POLLINATIONS_BASE}/${encodeURIComponent(prompt)}?${params}`;
-
-    const doGet = (targetUrl) => {
-      const proto = targetUrl.startsWith('https') ? https : http;
-      const req = proto.get(targetUrl, { timeout: 120000 }, (res) => {
-        if ([301, 302].includes(res.statusCode)) return doGet(res.headers.location);
-        if (res.statusCode !== 200) return reject(new Error(`Pollinations HTTP ${res.statusCode}`));
-        const chunks = [];
-        res.on('data', c => chunks.push(c));
-        res.on('end', () => {
-          const buf = Buffer.concat(chunks);
-          resolve({
-            base64: buf.toString('base64'),
-            mimeType: (res.headers['content-type'] || 'image/jpeg').split(';')[0],
-            provider: 'Pollinations.ai FLUX text2img (fallback)',
-          });
-        });
-        res.on('error', reject);
-      });
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Pollinations timeout')); });
-    };
-    doGet(url);
-  });
+/**
+ * Fallback prompt creator if Gemini Vision encounters rate limits or temporary errors
+ */
+function createFallbackPrompt(name) {
+  return `Epic Marvel superhero portrait of a courageous person named "${name}". ` +
+    `Detailed human face, heroic facial expression, athletic build. ` +
+    `High-tech metallic superhero suit with glowing energy lines, flowing cape, dynamic power aura. ` +
+    `Dramatic cinematic lighting, superhero pose, glowing city skyline background, 8k concept art.`;
 }
 
-function downloadAsBase64(url) {
-  return new Promise((resolve, reject) => {
-    const proto = url.startsWith('https') ? https : http;
-    proto.get(url, { timeout: 30000 }, res => {
-      if (res.statusCode !== 200) return reject(new Error(`Download HTTP ${res.statusCode}`));
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
-      res.on('error', reject);
-    }).on('error', reject);
-  });
-}
-
-// ─── POST /api/generate ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/generate
+// ─────────────────────────────────────────────────────────────────────────────
 
 router.post('/', async (req, res) => {
   const startTime = Date.now();
@@ -191,57 +162,74 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Missing imageBase64 or name' });
   }
 
-  let result = null;
-  const prompt = buildSuperheroPrompt(name);
+  console.log(`\n[GENERATE] ── Starting 2-Stage Generation for: "${name}" ──────────────────────────`);
 
-  console.log(`\n[GENERATE] ── Start generation for: "${name}" ──────────────────────────`);
+  let prompt = '';
+  let visionSource = 'Google Gemini 2.0 Vision AI';
 
-  // 1. Try fal.ai FLUX Kontext if key is set
-  if (process.env.FAL_KEY) {
+  try {
+    // ── STAGE 1: Gemini Vision reads photo & crafts superhero prompt ─────
     try {
-      result = await generateWithFalKontext(imageBase64, mimeType, name);
-    } catch (falErr) {
-      console.warn(`[GENERATE] fal.ai skipped/failed (${falErr.message}). Switching to Pollinations img2img...`);
+      prompt = await generatePromptWithGeminiVision(imageBase64, mimeType, name);
+    } catch (visionErr) {
+      console.warn(`[GENERATE WARNING] Gemini Vision reading failed (${visionErr.message}). Using fallback prompt.`);
+      prompt = createFallbackPrompt(name);
+      visionSource = 'Fallback Prompt Generator';
     }
-  }
 
-  // 2. Pollinations img2img via tmpfiles hosted URL
-  if (!result) {
+    // ── Host image on tmpfiles.org for reference if needed ───────────────
+    let publicImageUrl = null;
     try {
-      console.log(`[GENERATE] Step: Hosting input image on tmpfiles.org...`);
-      const publicImageUrl = await uploadToTmpFiles(imageBase64, mimeType || 'image/jpeg');
-      console.log(`[GENERATE] Input hosted at: ${publicImageUrl}`);
-      
-      result = await generateWithPollinationsImg2Img(publicImageUrl, name);
-    } catch (pImg2ImgErr) {
-      console.warn(`[GENERATE] Pollinations img2img failed (${pImg2ImgErr.message}). Switching to text2img fallback...`);
+      publicImageUrl = await uploadToTmpFiles(imageBase64, mimeType || 'image/jpeg');
+      console.log(`[GENERATE] Hosted input photo for reference: ${publicImageUrl}`);
+    } catch (uploadErr) {
+      console.warn(`[GENERATE WARNING] Host upload skipped: ${uploadErr.message}`);
     }
+
+    // ── STAGE 2: Pollinations AI generates image using Gemini's prompt ────
+    const imageResult = await generateImageWithPollinations(prompt, publicImageUrl);
+
+    const latency = Date.now() - startTime;
+    const provider = `${visionSource} ➔ Pollinations AI (FLUX)`;
+
+    // Log to Log Viewer
+    addLog({
+      prompt,
+      httpStatus: 200,
+      latency,
+      error: null,
+      config: { provider, pollinationsKeyUsed: !!POLLINATIONS_KEY },
+    });
+
+    console.log(`[GENERATE] ✅ Complete! Latency: ${latency}ms\n`);
+
+    return res.json({
+      success: true,
+      imageBase64: imageResult.base64,
+      mimeType: imageResult.mimeType,
+      latency,
+      provider,
+      prompt,
+    });
+
+  } catch (err) {
+    const latency = Date.now() - startTime;
+    console.error(`[GENERATE ERROR] ${err.message}\n`);
+
+    addLog({
+      prompt: prompt || `[Stage 1 Failed] name=${name}`,
+      httpStatus: 500,
+      latency,
+      error: err.message,
+      config: { provider: 'Failed' },
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      latency,
+    });
   }
-
-  // 3. Fallback text2img
-  if (!result) {
-    result = await generateWithPollinationsText(name);
-  }
-
-  const latency = Date.now() - startTime;
-
-  addLog({
-    prompt,
-    httpStatus: 200,
-    latency,
-    error: null,
-    config: { provider: result.provider },
-  });
-
-  console.log(`[GENERATE] ✅ Successfully generated via "${result.provider}" in ${latency}ms\n`);
-
-  return res.json({
-    success: true,
-    imageBase64: result.base64,
-    mimeType: result.mimeType,
-    latency,
-    provider: result.provider,
-  });
 });
 
 module.exports = router;
